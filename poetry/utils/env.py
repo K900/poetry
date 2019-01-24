@@ -10,6 +10,7 @@ from contextlib import contextmanager
 from subprocess import CalledProcessError
 from typing import Any
 from typing import Dict
+from typing import List
 from typing import Optional
 from typing import Tuple
 
@@ -144,13 +145,6 @@ class Env(object):
             self._marker_env = self.get_marker_env()
 
         return self._marker_env
-
-    @property
-    def pip(self):  # type: () -> str
-        """
-        Path to current pip executable
-        """
-        return self._bin("pip")
 
     @classmethod
     def get(cls, cwd, reload=False):  # type: (Path, bool) -> Env
@@ -305,6 +299,9 @@ class Env(object):
     def get_marker_env(self):  # type: () -> Dict[str, Any]
         raise NotImplementedError()
 
+    def get_pip_binary(self):  # type: () -> List[str]
+        raise NotImplementedError()
+
     def config_var(self, var):  # type: (str) -> Any
         raise NotImplementedError()
 
@@ -318,12 +315,19 @@ class Env(object):
         return True
 
     def run(self, bin, *args, **kwargs):
+        bin = self._bin(bin)
+        cmd = [bin] + list(args)
+        return self._run(cmd, **kwargs)
+
+    def run_pip(self, *args, **kwargs):
+        pip = self.get_pip_binary()
+        cmd = pip + list(args)
+        return self._run(cmd, **kwargs)
+
+    def _run(self, cmd, **kwargs):
         """
         Run a command inside the Python environment.
         """
-        bin = self._bin(bin)
-
-        cmd = [bin] + list(args)
         shell = kwargs.get("shell", False)
         call = kwargs.pop("call", False)
         input_ = kwargs.pop("input_", None)
@@ -388,6 +392,11 @@ class SystemEnv(Env):
     def get_python_implementation(self):  # type: () -> str
         return platform.python_implementation()
 
+    def get_pip_binary(self):  # type: () -> List[str]
+        # If we're not in a venv, assume the interpreter we're running on
+        # has a pip and use that
+        return [sys.executable, "-m", "pip"]
+
     def get_marker_env(self):  # type: () -> Dict[str, Any]
         if hasattr(sys, "implementation"):
             info = sys.implementation.version
@@ -450,6 +459,11 @@ class VirtualEnv(Env):
 
     def get_python_implementation(self):  # type: () -> str
         return self.marker_env["platform_python_implementation"]
+
+    def get_pip_binary(self):  # type: () -> List[str]
+        # We're in a virtualenv that is known to be sane,
+        # so assume that we have a functional pip
+        return [self._bin("pip")]
 
     def get_marker_env(self):  # type: () -> Dict[str, Any]
         output = self.run("python", "-", input_=GET_ENVIRONMENT_INFO)
