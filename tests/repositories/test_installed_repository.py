@@ -9,11 +9,11 @@ orator===0.9.8
 
 
 class MockEnv(BaseMockEnv):
-    def run(self, bin, *args):
-        if bin == "pip" and args[0] == "freeze":
+    def run_pip(self, *args):
+        if args[0] == "freeze":
             return FREEZE_RESULTS
 
-        super(MockEnv, self).run(bin, *args)
+        super(MockEnv, self).run_pip(*args)
 
 
 def test_load():

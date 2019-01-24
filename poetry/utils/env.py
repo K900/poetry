@@ -11,6 +11,7 @@ from contextlib import contextmanager
 from subprocess import CalledProcessError
 from typing import Any
 from typing import Dict
+from typing import List
 from typing import Optional
 from typing import Tuple
 
@@ -327,6 +328,9 @@ class Env(object):
     def get_marker_env(self):  # type: () -> Dict[str, Any]
         raise NotImplementedError()
 
+    def get_pip_binary(self):  # type: () -> List[str]
+        raise NotImplementedError()
+
     def config_var(self, var):  # type: (str) -> Any
         raise NotImplementedError()
 
@@ -343,12 +347,19 @@ class Env(object):
         return True
 
     def run(self, bin, *args, **kwargs):
+        bin = self._bin(bin)
+        cmd = [bin] + list(args)
+        return self._run(cmd, **kwargs)
+
+    def run_pip(self, *args, **kwargs):
+        pip = self.get_pip_binary()
+        cmd = pip + list(args)
+        return self._run(cmd, **kwargs)
+
+    def _run(self, cmd, **kwargs):
         """
         Run a command inside the Python environment.
         """
-        bin = self._bin(bin)
-
-        cmd = [bin] + list(args)
         shell = kwargs.get("shell", False)
         call = kwargs.pop("call", False)
         input_ = kwargs.pop("input_", None)
@@ -412,6 +423,11 @@ class SystemEnv(Env):
 
     def get_python_implementation(self):  # type: () -> str
         return platform.python_implementation()
+
+    def get_pip_binary(self):  # type: () -> List[str]
+        # If we're not in a venv, assume the interpreter we're running on
+        # has a pip and use that
+        return [sys.executable, "-m", "pip"]
 
     def get_marker_env(self):  # type: () -> Dict[str, Any]
         if hasattr(sys, "implementation"):
@@ -481,6 +497,11 @@ class VirtualEnv(Env):
     def get_python_implementation(self):  # type: () -> str
         return self.marker_env["platform_python_implementation"]
 
+    def get_pip_binary(self):  # type: () -> List[str]
+        # We're in a virtualenv that is known to be sane,
+        # so assume that we have a functional pip
+        return [self._bin("pip")]
+
     def get_marker_env(self):  # type: () -> Dict[str, Any]
         output = self.run("python", "-", input_=GET_ENVIRONMENT_INFO)
 
@@ -505,7 +526,7 @@ class VirtualEnv(Env):
         return value
 
     def get_pip_version(self):  # type: () -> Version
-        output = self.run("python", "-m", "pip", "--version").strip()
+        output = self.run_pip("--version").strip()
         m = re.match("pip (.+?)(?: from .+)?$", output)
         if not m:
             return Version.parse("0.0")
