@@ -9,6 +9,7 @@ class InstallCommand(EnvCommand):
 
     install
         { --no-dev : Do not install dev dependencies. }
+        { --no-root : Do not install the root package (your project). }
         { --dry-run : Outputs the operations but will not execute anything
                       (implicitly enables --verbose). }
         { --E|extras=* : Extra sets of dependencies to install. }
@@ -56,6 +57,9 @@ exist it will look for <comment>pyproject.toml</> and do the same.
 
         if return_code != 0:
             return return_code
+
+        if not self.option("no-root"):
+            return 0
 
         try:
             builder = EditableBuilder(self.poetry, self._env, NullIO())
