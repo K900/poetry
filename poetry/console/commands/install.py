@@ -58,7 +58,7 @@ exist it will look for <comment>pyproject.toml</> and do the same.
         if return_code != 0:
             return return_code
 
-        if not self.option("no-root"):
+        if self.option("no-root"):
             return 0
 
         try:
