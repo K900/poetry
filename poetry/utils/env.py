@@ -587,11 +587,11 @@ class NullEnv(SystemEnv):
         self._execute = execute
         self.executed = []
 
-    def run(self, bin, *args):
-        self.executed.append([bin] + list(args))
+    def _run(self, cmd):
+        self.executed.append(cmd)
 
         if self._execute:
-            return super(NullEnv, self).run(bin, *args)
+            return super(NullEnv, self)._run(cmd)
 
     def _bin(self, bin):
         return bin

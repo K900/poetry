@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import sys
+
 from poetry.io import NullIO
 from poetry.masonry.builders import EditableBuilder
 from poetry.poetry import Poetry
@@ -20,7 +22,7 @@ def test_build_should_delegate_to_pip_for_non_pure_python_packages(tmp_dir, mock
     builder = EditableBuilder(Poetry.create(module_path), env, NullIO())
     builder.build()
 
-    expected = [["python", "-m", "pip", "install", "-e", str(module_path)]]
+    expected = [[sys.executable, "-m", "pip", "install", "-e", str(module_path)]]
     assert expected == env.executed
 
     assert 0 == move.call_count
@@ -36,7 +38,7 @@ def test_build_should_temporarily_remove_the_pyproject_file(tmp_dir, mocker):
     builder = EditableBuilder(Poetry.create(module_path), env, NullIO())
     builder.build()
 
-    expected = [["python", "-m", "pip", "install", "-e", str(module_path)]]
+    expected = [[sys.executable, "-m", "pip", "install", "-e", str(module_path)]]
     assert expected == env.executed
 
     assert 2 == move.call_count
